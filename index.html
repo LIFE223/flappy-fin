@@ -1,109 +1,150 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Flappy Fin</title>
   <style>
     body {
       margin: 0;
       overflow: hidden;
-      background: #111;
-      cursor: pointer;
+      background: #87ceeb;
     }
-
-    #fin {
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background: #87ceeb;
+      box-shadow: 0 0 16px #222;
+    }
+    #score {
       position: absolute;
-      width: 40px;
+      top: 10px;
       left: 50%;
       transform: translateX(-50%);
-    }
-
-    .pipe {
-      position: absolute;
-      width: 80px;
-      background: #0f0;
-      border-radius: 40px;
+      font-size: 32px;
+      color: #fff;
+      font-family: sans-serif;
+      text-shadow: 2px 2px 6px #222;
     }
   </style>
 </head>
 <body>
-  <img id="fin" src="https://uploads.onecompiler.io/43nezsgmh/43vrxyayj/1000003259.jpg" alt="Fin" />
-  <audio id="fartSound" src="fart.mp3"></audio>
-
+  <div id="score">0</div>
+  <canvas id="game" width="400" height="600"></canvas>
   <script>
-    const fin = document.getElementById('fin');
-    const fartSound = document.getElementById('fartSound');
+    // Load assets
+    const birdImg = new Image();
+    birdImg.src = "fin.jpg";
+    const fartSound = new Audio("fart.mp3");
 
-    let finY = window.innerHeight / 2;
-    let velocity = 0;
-    const gravity = 0.4;
-    const flapStrength = -7;
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("score");
 
-    function updateFin() {
-      velocity += gravity;
-      finY += velocity;
+    // Game variables
+    let bird = { x: 60, y: 300, w: 40, h: 40, vy: 0 };
+    let gravity = 0.5;
+    let jump = -8;
+    let pipes = [];
+    let pipeGap = 150;
+    let pipeWidth = 60;
+    let frame = 0;
+    let score = 0;
+    let gameOver = false;
 
-      // Clamp to screen bounds but don't reset velocity at top
-      if (finY < 0) {
-        finY = 0;
-        if (velocity < 0) velocity = 0; // Only stop upward movement
-      }
-      if (finY > window.innerHeight - 40) {
-        finY = window.innerHeight - 40;
-        if (velocity > 0) velocity = 0; // Only stop downward movement
-      }
-
-      fin.style.top = `${finY}px`;
-      requestAnimationFrame(updateFin);
+    function resetGame() {
+      bird.y = 300;
+      bird.vy = 0;
+      pipes = [];
+      frame = 0;
+      score = 0;
+      gameOver = false;
+      scoreEl.textContent = "0";
+      loop();
     }
 
-    document.addEventListener('click', () => {
-      velocity = flapStrength;
-      fartSound.currentTime = 0;
-      fartSound.play();
-    });
-
-    // Pipe generator
     function spawnPipe() {
-      const gap = 120;
-      const topHeight = Math.floor(Math.random() * (window.innerHeight - gap - 100)) + 50;
-      const bottomHeight = window.innerHeight - topHeight - gap;
-
-      const topPipe = document.createElement('div');
-      topPipe.className = 'pipe';
-      topPipe.style.height = `${topHeight}px`;
-      topPipe.style.top = `0px`;
-      topPipe.style.left = `${window.innerWidth}px`;
-
-      const bottomPipe = document.createElement('div');
-      bottomPipe.className = 'pipe';
-      bottomPipe.style.height = `${bottomHeight}px`;
-      bottomPipe.style.bottom = `0px`;
-      bottomPipe.style.left = `${window.innerWidth}px`;
-
-      document.body.appendChild(topPipe);
-      document.body.appendChild(bottomPipe);
-
-      let pipeX = window.innerWidth;
-      function movePipe() {
-        pipeX -= 2;
-        topPipe.style.left = `${pipeX}px`;
-        bottomPipe.style.left = `${pipeX}px`;
-
-        if (pipeX + 80 < 0) {
-          topPipe.remove();
-          bottomPipe.remove();
-        } else {
-          requestAnimationFrame(movePipe);
-        }
-      }
-
-   
-   movePipe();
+      let top = Math.random() * 250 + 50;
+      pipes.push({
+        x: canvas.width,
+        top: top,
+        bottom: top + pipeGap
+      });
     }
 
-    setInterval(spawnPipe, 2000);
-    updateFin();
+    function loop() {
+      if (gameOver) return;
+      frame++;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Bird physics
+      bird.vy += gravity;
+      bird.y += bird.vy;
+
+      // Draw bird
+      ctx.drawImage(birdImg, bird.x, bird.y, bird.w, bird.h);
+
+      // Pipes
+      if (frame % 90 === 0) spawnPipe();
+      for (let i = pipes.length - 1; i >= 0; i--) {
+        pipes[i].x -= 2;
+
+        // Draw pipes
+        ctx.fillStyle = "#228B22";
+        ctx.fillRect(pipes[i].x, 0, pipeWidth, pipes[i].top);
+        ctx.fillRect(pipes[i].x, pipes[i].bottom, pipeWidth, canvas.height - pipes[i].bottom);
+
+        // Collision
+        if (
+          bird.x + bird.w > pipes[i].x &&
+          bird.x < pipes[i].x + pipeWidth &&
+          (bird.y < pipes[i].top || bird.y + bird.h > pipes[i].bottom)
+        ) {
+          gameOver = true;
+          setTimeout(() => {
+            alert("Game Over! Score: " + score);
+            resetGame();
+          }, 100);
+        }
+
+        // Score
+        if (pipes[i].x + pipeWidth < bird.x && !pipes[i].scored) {
+          score++;
+          pipes[i].scored = true;
+          scoreEl.textContent = score;
+        }
+
+        // Remove pipes
+        if (pipes[i].x + pipeWidth < 0) pipes.splice(i, 1);
+      }
+
+      // Ground/ceiling collision
+      if (bird.y + bird.h > canvas.height || bird.y < 0) {
+        gameOver = true;
+        setTimeout(() => {
+          alert("Game Over! Score: " + score);
+          resetGame();
+        }, 100);
+      }
+
+      requestAnimationFrame(loop);
+    }
+
+    // Controls
+    function flap() {
+      if (!gameOver) {
+        bird.vy = jump;
+        fartSound.currentTime = 0;
+        fartSound.play();
+      }
+    }
+    document.addEventListener("keydown", (e) => {
+      if (e.code === "Space") flap();
+    });
+    canvas.addEventListener("mousedown", flap);
+    canvas.addEventListener("touchstart", flap);
+
+    // Start game when image loads
+    birdImg.onload = resetGame;
   </script>
 </body>
 </html>
