@@ -27,7 +27,7 @@
   </style>
 </head>
 <body>
-  <img id="fin" src="fin.jpg" alt="Fin" />
+  <img id="fin" src="https://uploads.onecompiler.io/43nezsgmh/43vrxyayj/1000003259.jpg" alt="Fin" />
   <audio id="fartSound" src="fart.mp3"></audio>
 
   <script>
@@ -43,14 +43,14 @@
       velocity += gravity;
       finY += velocity;
 
-      // Clamp to screen bounds
+      // Clamp to screen bounds but don't reset velocity at top
       if (finY < 0) {
         finY = 0;
-        velocity = 0;
+        if (velocity < 0) velocity = 0; // Only stop upward movement
       }
       if (finY > window.innerHeight - 40) {
         finY = window.innerHeight - 40;
-        velocity = 0;
+        if (velocity > 0) velocity = 0; // Only stop downward movement
       }
 
       fin.style.top = `${finY}px`;
