@@ -25,10 +25,28 @@
       font-family: sans-serif;
       text-shadow: 2px 2px 6px #222;
     }
+    #start-btn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 2em;
+      padding: 20px 40px;
+      background: #fff;
+      border: 2px solid #222;
+      border-radius: 12px;
+      cursor: pointer;
+      z-index: 2;
+      box-shadow: 0 3px 16px #2228;
+    }
+    #start-btn.hide {
+      display: none;
+    }
   </style>
 </head>
 <body>
   <div id="score">0</div>
+  <button id="start-btn">Start Flappy Fin</button>
   <canvas id="game" width="400" height="600"></canvas>
   <script>
     // Load assets
@@ -39,6 +57,7 @@
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
     const scoreEl = document.getElementById("score");
+    const startBtn = document.getElementById("start-btn");
 
     // Game variables
     let bird = { x: 60, y: 300, w: 40, h: 40, vy: 0 };
@@ -50,7 +69,10 @@
     let frame = 0;
     let score = 0;
     let gameOver = false;
+    let started = false;
+    let gameOverShown = false; // prevent game over spam
 
+    // Reset game state
     function resetGame() {
       bird.y = 300;
       bird.vy = 0;
@@ -58,8 +80,22 @@
       frame = 0;
       score = 0;
       gameOver = false;
+      gameOverShown = false;
+      started = false;
       scoreEl.textContent = "0";
-      loop();
+      drawStartScreen();
+    }
+
+    // Draw start screen (Fin floating, no pipes)
+    function drawStartScreen() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(birdImg, bird.x, bird.y, bird.w, bird.h);
+      ctx.font = "bold 40px sans-serif";
+      ctx.fillStyle = "#fff";
+      ctx.textAlign = "center";
+      ctx.fillText("Flappy Fin", canvas.width/2, 120);
+      ctx.font = "30px sans-serif";
+      ctx.fillText("Click Start!", canvas.width/2, 190);
     }
 
     function spawnPipe() {
@@ -72,7 +108,19 @@
     }
 
     function loop() {
-      if (gameOver) return;
+      if (!started) return;
+
+      if (gameOver) {
+        if (!gameOverShown) {
+          gameOverShown = true;
+          setTimeout(() => {
+            alert("Game Over! Score: " + score);
+            startBtn.classList.remove("hide");
+            resetGame();
+          }, 100);
+        }
+        return;
+      }
       frame++;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -100,10 +148,6 @@
           (bird.y < pipes[i].top || bird.y + bird.h > pipes[i].bottom)
         ) {
           gameOver = true;
-          setTimeout(() => {
-            alert("Game Over! Score: " + score);
-            resetGame();
-          }, 100);
         }
 
         // Score
@@ -120,31 +164,56 @@
       // Ground/ceiling collision
       if (bird.y + bird.h > canvas.height || bird.y < 0) {
         gameOver = true;
-        setTimeout(() => {
-          alert("Game Over! Score: " + score);
-          resetGame();
-        }, 100);
       }
 
       requestAnimationFrame(loop);
     }
 
-    // Controls
-    function flap() {
-      if (!gameOver) {
-        bird.vy = jump;
-        fartSound.currentTime = 0;
-        fartSound.play();
-      }
+    // Controls - only one flap per input
+    function flap(e) {
+      if (!started || gameOver) return;
+      bird.vy = jump;
+      fartSound.currentTime = 0;
+      fartSound.play();
+      // Prevent double flap
+      e.preventDefault && e.preventDefault();
     }
-    document.addEventListener("keydown", (e) => {
-      if (e.code === "Space") flap();
-    });
-    canvas.addEventListener("mousedown", flap);
-    canvas.addEventListener("touchstart", flap);
 
-    // Start game when image loads
-    birdImg.onload = resetGame;
+    // Only allow one event per input (no double jump)
+    let flapHandler = (e) => flap(e);
+    document.addEventListener("keydown", (e) => {
+      if (e.code === "Space") flapHandler(e);
+    });
+    canvas.addEventListener("mousedown", flapHandler);
+    canvas.addEventListener("touchstart", flapHandler);
+
+    // Start button
+    startBtn.addEventListener("click", () => {
+      if (!started) {
+        started = true;
+        startBtn.classList.add("hide");
+        scoreEl.textContent = "0";
+        frame = 0;
+        pipes = [];
+        bird.y = 300;
+        bird.vy = 0;
+        gameOver = false;
+        gameOverShown = false;
+        loop();
+      }
+    });
+
+    // On image load, setup game
+    birdImg.onload = () => {
+      resetGame();
+    };
+
+    // If user reloads page or game ends, show start screen
+    window.onload = () => {
+      if (birdImg.complete) {
+        resetGame();
+      }
+    };
   </script>
 </body>
 </html>
