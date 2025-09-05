@@ -28,6 +28,8 @@
       z-index: 2;
       pointer-events: none;
       user-select: none;
+      text-align: center;
+      width: 100vw;
     }
     #score {
       top: 24px;
@@ -94,13 +96,15 @@
     window.addEventListener('resize', resizeCanvas);
 
     // Game variables
-    let bird = { x: 0, y: 0, w: 48, h: 48, vy: 0 };
-    let gravity = 0.55;
-    let jump = -8.5;
+    let bird = { x: 0, y: 0, w: 56, h: 56, vy: 0 };
+    let gravity = 0.60;
+    let jump = -8.2;
+    // Harder settings
     let pipes = [];
-    let pipeGap = 180;
-    let pipeWidth = 72;
-    let pipeRadius = 28;
+    let pipeGap = 130; // Smaller gap for difficulty!
+    let pipeWidth = 62;
+    let pipeRadius = pipeWidth/4; // Less round, halfway between square/circle
+    let pipeSpeed = 4; // Faster pipes!
     let frame = 0;
     let score = 0;
     let highscore = 0;
@@ -161,18 +165,23 @@
       });
     }
 
-    // Draw rounded pipes
+    // Draw pipes with less roundness
     function drawPipe(pipe) {
       ctx.save();
       ctx.fillStyle = "#228B22";
       ctx.strokeStyle = "#185d15";
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 3;
       // Top pipe
       ctx.beginPath();
       ctx.moveTo(pipe.x, 0);
       ctx.lineTo(pipe.x + pipeWidth, 0);
       ctx.lineTo(pipe.x + pipeWidth, pipe.top - pipeRadius);
-      ctx.arc(pipe.x + pipeWidth/2, pipe.top - pipeRadius, pipeRadius, 0, Math.PI, false);
+      ctx.arc(
+        pipe.x + pipeWidth/2,
+        pipe.top - pipeRadius,
+        pipeRadius,
+        0, Math.PI, false
+      );
       ctx.lineTo(pipe.x, pipe.top - pipeRadius);
       ctx.closePath();
       ctx.fill();
@@ -180,7 +189,12 @@
       // Bottom pipe
       ctx.beginPath();
       ctx.moveTo(pipe.x, pipe.bottom + pipeRadius);
-      ctx.arc(pipe.x + pipeWidth/2, pipe.bottom + pipeRadius, pipeRadius, Math.PI, 0, true);
+      ctx.arc(
+        pipe.x + pipeWidth/2,
+        pipe.bottom + pipeRadius,
+        pipeRadius,
+        Math.PI, 0, true
+      );
       ctx.lineTo(pipe.x + pipeWidth, canvas.height);
       ctx.lineTo(pipe.x, canvas.height);
       ctx.closePath();
@@ -215,13 +229,13 @@
       bird.vy += gravity;
       bird.y += bird.vy;
 
-      // Draw bird
+      // Draw bird (always square, never stretched)
       ctx.drawImage(birdImg, bird.x, bird.y, bird.w, bird.h);
 
       // Pipes
-      if (frame % 90 === 0) spawnPipe();
+      if (frame % 80 === 0) spawnPipe(); // More pipes, more challenge!
       for (let i = pipes.length - 1; i >= 0; i--) {
-        pipes[i].x -= 2.5;
+        pipes[i].x -= pipeSpeed;
 
         drawPipe(pipes[i]);
 
